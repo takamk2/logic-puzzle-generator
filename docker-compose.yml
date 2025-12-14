@@ -10,3 +10,12 @@ services:
     environment:
       - NODE_OPTIONS=--openssl-legacy-provider
     command: tail -f /dev/null
+
+  react:
+    image: node:20-alpine
+    working_dir: /app/react
+    volumes:
+      - ./:/app
+    ports:
+      - "8081:8081"
+    command: tail -f /dev/null
