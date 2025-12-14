@@ -1,4 +1,4 @@
-import BaseAlgorithm from "./BaseAlgorithm";
+import BaseAlgorithm from "./BaseAlgorithm.js";
 
 export default class extends BaseAlgorithm {
   cellParams1 = {

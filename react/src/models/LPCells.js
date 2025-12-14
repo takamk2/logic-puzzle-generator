@@ -1,4 +1,4 @@
-import Copy from "../utils/Copy";
+import Copy from "../utils/Copy.js";
 
 const UNKNOWN = 0;
 const PAINT = 1;
