@@ -1,6 +1,6 @@
 
 import BaseAlgorithm from "./BaseAlgorithm.js";
-import LineLogic from "./LineLogic.js";
+import Mugen from "./Mugen.js";
 
 export default class extends BaseAlgorithm {
     // Params not really used since we defer to LineLogic or set manually
@@ -56,7 +56,7 @@ export default class extends BaseAlgorithm {
         let loop = 0;
         while (true) {
             loop++;
-            if (loop > 10) break; // Limit recursion depth
+            if (loop > 20) break; // Limit recursion depth
 
             let changed = false;
             const beforeJson = nextCells.json;
@@ -64,7 +64,7 @@ export default class extends BaseAlgorithm {
             // Check Vertical
             for (let v = 0; v < nextCells.verticalCount; v++) {
                 if (nextCells.isVerticalLineFixed(v)) continue;
-                const logic = new LineLogic("vertical", v, this.lPHints, nextCells);
+                const logic = new Mugen("vertical", v, this.lPHints, nextCells);
                 const valid = logic.execute(); // Returns false if contradiction
                 if (valid === false) return false; // Contradiction found!
             }
@@ -72,7 +72,7 @@ export default class extends BaseAlgorithm {
             // Check Horizontal
             for (let h = 0; h < nextCells.horizontalCount; h++) {
                 if (nextCells.isHorizontalLineFixed(h)) continue;
-                const logic = new LineLogic("horizontal", h, this.lPHints, nextCells);
+                const logic = new Mugen("horizontal", h, this.lPHints, nextCells);
                 const valid = logic.execute();
                 if (valid === false) return false; // Contradiction found!
             }
