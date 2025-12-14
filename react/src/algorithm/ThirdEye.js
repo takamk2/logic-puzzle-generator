@@ -29,13 +29,14 @@ export default class extends BaseAlgorithm {
             if (!this.checkConsistency(cellId, 1)) {
                 // Contradiction! Must be NoPaint (2)
                 this.lPCells.updateCell(cellId, { s: 2, c: "#ffcccc" });
-                continue; // Move to next cell
+                return; // Optimize: Return to main loop to propagate changes with cheaper algorithms
             }
 
             // Try Assuming NoPaint (2)
             if (!this.checkConsistency(cellId, 2)) {
                 // Contradiction! Must be Paint (1)
                 this.lPCells.updateCell(cellId, { s: 1, c: "#00b3b3" });
+                return; // Optimize
             }
         }
     }
@@ -56,7 +57,7 @@ export default class extends BaseAlgorithm {
         let loop = 0;
         while (true) {
             loop++;
-            if (loop > 20) break; // Limit recursion depth
+            if (loop > 5) break; // Optimization: Limit recursion depth to 5 (was 20)
 
             let changed = false;
             const beforeJson = nextCells.json;

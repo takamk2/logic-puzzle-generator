@@ -3,6 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import LogicPuzzleFrame from './LogicPuzzleFrame';
 import LPHints from '../models/LPHints';
 import LPCells from '../models/LPCells';
+import patterns from '../algorithm/patterns.js';
 
 const LogicPuzzleGenerator = () => {
     const [verticalCount, setVerticalCount] = useState(5);
@@ -11,7 +12,9 @@ const LogicPuzzleGenerator = () => {
     const [canvasHeight] = useState(500);
     const [lPHints, setLPHints] = useState(null);
     const [lPCells, setLPCells] = useState(null);
+
     const [cellIsShow, setCellIsShow] = useState(true);
+    const [verificationResult, setVerificationResult] = useState('');
 
     // Initial setup and when counts change
     useEffect(() => {
@@ -39,6 +42,40 @@ const LogicPuzzleGenerator = () => {
     const onChangeVertical = (e) => setVerticalCount(Number(e.target.value));
     const onChangeHorizontal = (e) => setHorizontalCount(Number(e.target.value));
 
+    const verifySolvability = () => {
+        if (!lPHints) return;
+        setVerificationResult("Checking...");
+
+        // Use timeout to allow UI to update "Checking..." before heavy calculation
+        setTimeout(() => {
+            const testCells = LPCells.empty(verticalCount, horizontalCount);
+            let loopCount = 0;
+            while (true) {
+                loopCount++;
+                const beforeJson = testCells.json;
+
+                // Vertical Pass
+                for (let i = 0; i < testCells.verticalCount; i++) {
+                    patterns.forEach(algo => algo("vertical", i, lPHints, testCells));
+                }
+
+                // Horizontal Pass
+                for (let i = 0; i < testCells.horizontalCount; i++) {
+                    patterns.forEach(algo => algo("horizontal", i, lPHints, testCells));
+                }
+
+                if (beforeJson === testCells.json) break;
+                if (loopCount > 20) break;
+            }
+
+            if (testCells.restCount === 0) {
+                setVerificationResult("✅ 論理的に解けます (Solvable)");
+            } else {
+                setVerificationResult(`⚠️ 論理だけでは解けません (Unsolvable, Rest: ${testCells.restCount})`);
+            }
+        }, 10);
+    };
+
     return (
         <div>
             <p>
@@ -57,6 +94,10 @@ const LogicPuzzleGenerator = () => {
                 <button onClick={onClickShowButton}>
                     {cellIsShow ? 'セル非表示' : 'セル表示'}
                 </button>
+                <button onClick={verifySolvability} style={{ marginLeft: '10px' }}>
+                    論理チェック
+                </button>
+                <span style={{ marginLeft: '10px', fontWeight: 'bold' }}>{verificationResult}</span>
             </p>
             <LogicPuzzleFrame
                 canvasWidth={canvasWidth}

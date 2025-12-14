@@ -14,6 +14,8 @@ const LogicPuzzleAnalyzer = () => {
     const [lPCells, setLPCells] = useState(null);
     const [cellIsShow] = useState(true);
     const [hintsJson, setHintsJson] = useState("");
+    const [status, setStatus] = useState("Ready");
+    const [isMonochrome, setIsMonochrome] = useState(false);
 
     // Initial setup
     useEffect(() => {
@@ -26,67 +28,35 @@ const LogicPuzzleAnalyzer = () => {
     // Let's replicate Vue watch behavior manually if needed.
 
     // Watch counts
-    useEffect(() => {
-        // If this is triggered by hintsJson parsing, we might be double-initializing?
-        // In Vue:
-        // watch verticalCount -> reset
-        // watch hintsJson -> update counts -> which triggers reset?
-        // Actually in Vue `hintsJson` watcher updates counts, then `nextTick` sets hints.
-        // This implies reset happens first then hints applied?
+    // Watch counts: REMOVED auto-reset to avoid race condition with JSON import
+    // useEffect(() => {
+    //     const newCells = LPCells.empty(verticalCount, horizontalCount);
+    //     setLPCells(newCells);
+    //     setLPHints(LPHints.createByLPCells(newCells));
+    // }, [verticalCount, horizontalCount]);
 
-        // Simplification:
-        const newCells = LPCells.empty(verticalCount, horizontalCount);
+    // Manual reset helper
+    const resetBoard = (v, h) => {
+        const newCells = LPCells.empty(v, h);
         setLPCells(newCells);
         setLPHints(LPHints.createByLPCells(newCells));
-    }, [verticalCount, horizontalCount]);
+    };
 
     // Watch hintsJson
     useEffect(() => {
         if (!hintsJson) return;
         try {
             const parsedHints = LPHints.createByJson(hintsJson);
-            // This will trigger the above effect due to state change
-            // We need to handle the ordering.
-            // If we change counts, the above effect runs and RESETS lPHints.
-            // We need lPHints to be set AFTER reset.
-
-            // Let's do it in one go or use a specific handler.
-            // React batching might handle it, but allow effect dependency is tricky.
-
-            // Instead of relying on effect for JSON, let's just do it here.
-            // But we need to avoid the count-change effect overriding it.
-
-            // Actually, let's decouple "reset on count change" from "load from JSON".
-            // But `hintsJson` input changes frequently? No, user pastes it.
-
             const hCount = parsedHints.vertical.length;
             const vCount = parsedHints.horizontal.length;
 
-            // We set counts, which triggers reset.
-            // Then we modify lPHints?
-
-            // Strategy: Wait for next render?
-            // Or better: pass parsedHints to the reset logic?
-
-            // Let's skip the complexity and just force update everything here, 
-            // and add a check in the count-effect to not reset if we just loaded hints?
-            // Difficult.
-
-            // Alternative: The `verticalCount` effect runs. 
-            // Let's just update `verticalCount` and let the effect run, THEN update hints?
-            // But we can't easily wait.
-
-            // Solution: Remove the generic "reset on count change" effect and explicit handlers?
-            // But Generator uses it. 
-            // Let's keep it simple.
-
+            // Set counts
             setVerticalCount(vCount);
             setHorizontalCount(hCount);
 
-            // setTimeout to ensure it runs after the reset effect?
-            setTimeout(() => {
-                setLPHints(parsedHints);
-            }, 0);
+            // Set Hints & Reset Cells directly
+            setLPHints(parsedHints);
+            setLPCells(LPCells.empty(vCount, hCount));
 
         } catch (e) {
             console.error(e);
@@ -108,53 +78,73 @@ const LogicPuzzleAnalyzer = () => {
 
     const analyze = async () => {
         if (!lPCells || !lPHints) return;
+        setStatus("Initializing...");
 
         let currentLPCells = lPCells.clone();
 
-        // Using a loop with async break for UI updates if allowed? 
-        // Vue version is synchronous blocking loop mostly, unless `onAnalyzing` allows render?
-        // Vue `onAnalyzing` just updates data. If the loop is sync, UI won't update until done.
-        // React state updates won't reflect in the middle of a sync loop.
-        // We should probably convert to helper function or use refs, 
-        // but sticking to exact port:
+        // Wait for UI render
+        await new Promise(r => setTimeout(r, 0));
 
+        let loopCount = 0;
         // eslint-disable-next-line no-constant-condition
         while (true) {
+            loopCount++;
+            setStatus(`Analyzing: Loop ${loopCount}...`);
+            await new Promise(r => setTimeout(r, 0)); // Yield to UI
+
             const beforeLPCells = currentLPCells.clone();
+            let stepCount = 0;
+            const totalStepsPerLoop = currentLPCells.vertical.length + currentLPCells.horizontal.length;
+
             for (let i = 0; i < currentLPCells.vertical.length; i++) {
+                stepCount++;
+                if (stepCount % 1 === 0) {
+                    setStatus(`Analyzing: Loop ${loopCount} / Step ${stepCount}...`);
+                    await new Promise(r => setTimeout(r, 0));
+                }
+
                 algoPatterns.forEach(algo =>
                     algo("vertical", i, lPHints, currentLPCells)
                 );
                 if (currentLPCells.isVerticalLineFixed(i)) {
-                    setLPCells(currentLPCells); // This won't trigger re-render immediately in loop
-                    // continue;
+                    // setLPCells(currentLPCells); 
                 }
             }
             for (let i = 0; i < currentLPCells.horizontal.length; i++) {
+                stepCount++;
+                if (stepCount % 1 === 0) {
+                    setStatus(`Analyzing: Loop ${loopCount} / Step ${stepCount}...`);
+                    await new Promise(r => setTimeout(r, 0));
+                }
+
                 algoPatterns.forEach(algo =>
                     algo("horizontal", i, lPHints, currentLPCells)
                 );
                 if (currentLPCells.isHorizontalLineFixed(i)) {
-                    setLPCells(currentLPCells);
-                    // continue;
+                    // setLPCells(currentLPCells);
                 }
+            }
+
+            // Intermediate update to show progress on board
+            if (loopCount % 1 === 0) {
+                setLPCells(currentLPCells);
+                await new Promise(r => setTimeout(r, 0));
             }
 
             if (beforeLPCells.json === currentLPCells.json) {
                 break;
             }
 
-            // To allow UI update, we'd need to yield execution.
-            // await new Promise(r => setTimeout(r, 0));
+            if (loopCount > 1000) break; // Increased safety break from 100 to 1000
         }
-        setLPCells(currentLPCells);
+        setLPCells(currentLPCells.clone()); // Ensure re-render with new reference
+        setStatus("Finished");
         onAnalyzeFinish(currentLPCells);
     };
 
     const onAnalyzeFinish = (finalCells) => {
-        alert(
-            `total: ${finalCells.totalCount}, fixed: ${finalCells.fixedCount}, rest: ${finalCells.restCount}`
-        );
+        // Alert removed as per user request
+        console.log(`total: ${finalCells.totalCount}, fixed: ${finalCells.fixedCount}, rest: ${finalCells.restCount}`);
         console.log(finalCells.score);
     };
 
@@ -171,8 +161,29 @@ const LogicPuzzleAnalyzer = () => {
                     />
                 </dd>
             </dl>
+            {/* Manual Inputs need to trigger resetBoard */}
+            {/* Note: Generator has inputs, Analyzer usually reads from JSON but can share frame props */}
+            {/* Analyzer doesn't expose manual size inputs in the original code snippet above, 
+                 but LogicPuzzleGenerator did. Analyzing LogicPuzzleAnalyzer again...
+                 Ah, Analyzer DOES NOT seem to have size inputs in the render block I saw previously? 
+                 Let's check the Render block carefully. 
+                 Wait, I previously saw LogicPuzzleGenerator code in step 442, but read LogicPuzzleAnalyzer in step 492.
+                 LogicPuzzleAnalyzer Render (lines 161-191) ONLY has JSON textarea.
+                 It does NOT have vertical/horizontal count inputs visible to user.
+                 So `handleVerticalChange` is not needed for UI.
+                 The state `verticalCount` and `horizontalCount` are internal or driven by JSON.
+                 Initial useEffect sets them to 5,5.
+                 Wait, if I remove the effect, initial load (empty) might result in null lPCells?
+                 The `useEffect([], ...)` sets initial. That is fine.
+                 So removing the `[verticalCount, horizontalCount]` effect is SAFE because user cannot manually change valid in Analyzer UI.
+              */}
             <p>
                 <button onClick={onClickAnalyze}>解析</button>
+                <span style={{ marginLeft: '10px', fontWeight: 'bold' }}>{status}</span>
+                <label style={{ marginLeft: '15px' }}>
+                    <input type="checkbox" checked={isMonochrome} onChange={(e) => setIsMonochrome(e.target.checked)} />
+                    モノクロ表示
+                </label>
             </p>
             <p>
                 <button onClick={onClickClear}>クリア</button>
@@ -185,6 +196,7 @@ const LogicPuzzleAnalyzer = () => {
                 lPHints={lPHints}
                 lPCells={lPCells}
                 cellIsShow={cellIsShow}
+                isMonochrome={isMonochrome}
                 onClickCell={onClickCell}
             />
         </div>

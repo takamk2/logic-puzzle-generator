@@ -15,6 +15,7 @@ const LogicPuzzleFrame = ({
     lPCells = null,
     lPHints = null,
     cellIsShow = true,
+    isMonochrome = false,
     onClickCell
 }) => {
     const canvasRef = useRef(null);
@@ -137,10 +138,10 @@ const LogicPuzzleFrame = ({
                 fillRect(point.x, point.y, point.w, point.h, { fillStyle: "#ffffff" });
                 switch (cell.s) {
                     case 1:
-                        fillRect(point.x, point.y, point.w, point.h, { fillStyle: cell.c });
+                        fillRect(point.x, point.y, point.w, point.h, { fillStyle: isMonochrome ? "#000000" : cell.c });
                         break;
                     case 2:
-                        strokeNoPaint(point.x, point.y, point.w, point.h, { strokeStyle: cell.c });
+                        strokeNoPaint(point.x, point.y, point.w, point.h, { strokeStyle: isMonochrome ? "#000000" : cell.c });
                         break;
                     default:
                         break;
@@ -186,6 +187,7 @@ const LogicPuzzleFrame = ({
         lPCells,
         lPHints,
         cellIsShow,
+        isMonochrome,
         canvasWidth,
         canvasHeight,
         verticalCount,
