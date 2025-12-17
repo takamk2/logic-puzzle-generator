@@ -15,7 +15,7 @@ const LogicPuzzleFrame = ({
     lPCells = null,
     lPHints = null,
     cellIsShow = true,
-    isMonochrome = false,
+    isSingleColor = false,
     onClickCell
 }) => {
     const canvasRef = useRef(null);
@@ -70,19 +70,30 @@ const LogicPuzzleFrame = ({
         const context = canvas.getContext('2d');
         if (!context) return;
 
+
+        // Theme Constants
+        const THEME = {
+            bg: "#222222",
+            grid: "#555555",
+            hint: "#dddddd",
+            cellBg: "#333333",
+            fill: "#FFD700", // Banana Yellow
+            mark: "#FF6B6B", // Soft Red
+        };
+
         // Helper functions for drawing
         const clearRect = (x, y, w, h) => context.clearRect(x, y, w, h);
         const fillRect = (x, y, w, h, options = {}) => {
-            context.fillStyle = options.fillStyle || "#000000";
+            context.fillStyle = options.fillStyle || "#eeeeee";
             context.fillRect(x, y, w, h);
         };
         const fillText = (text, x, y, size, options = {}) => {
-            context.fillStyle = options.fillStyle || "#000000";
+            context.fillStyle = options.fillStyle || "#eeeeee";
             context.fillText(text, x, y, size);
         };
         const strokeLine = (x1, y1, x2, y2, options = {}) => {
             context.lineWidth = options.lineWidth !== undefined ? options.lineWidth : 1;
-            context.strokeStyle = options.strokeStyle || "#000000";
+            context.strokeStyle = options.strokeStyle || "#444444";
             context.setLineDash(options.lineDash || []);
             context.beginPath();
             context.moveTo(x1, y1);
@@ -97,7 +108,8 @@ const LogicPuzzleFrame = ({
         // Render Logic
         // resetCanvas
         clearRect(0, 0, canvas.width, canvas.height);
-        fillRect(0, 0, canvas.width, canvas.height, { fillStyle: "#ffffff" });
+        // Canvas Background
+        fillRect(0, 0, canvas.width, canvas.height, { fillStyle: THEME.bg });
 
         // renderHints
         if (lPHints) {
@@ -110,7 +122,8 @@ const LogicPuzzleFrame = ({
                         String(hint),
                         leftSpaceWidth + cellSize * i + cellSize / 2,
                         topSpaceHeight - (HINT_SIZE * j + 8),
-                        HINT_SIZE
+                        HINT_SIZE,
+                        { fillStyle: THEME.hint }
                     );
                 });
             });
@@ -122,7 +135,8 @@ const LogicPuzzleFrame = ({
                         String(hint),
                         leftSpaceWidth - (HINT_SIZE * j + 8),
                         topSpaceHeight + cellSize * i + cellSize / 2,
-                        HINT_SIZE
+                        HINT_SIZE,
+                        { fillStyle: THEME.hint }
                     );
                 });
             });
@@ -135,13 +149,15 @@ const LogicPuzzleFrame = ({
                 const point = lPCellPoints.getPoint(cell.id);
                 if (!point) return;
 
-                fillRect(point.x, point.y, point.w, point.h, { fillStyle: "#ffffff" });
+                // Cell Background (for grid look in dark mode)
+                fillRect(point.x, point.y, point.w, point.h, { fillStyle: THEME.cellBg });
+
                 switch (cell.s) {
                     case 1:
-                        fillRect(point.x, point.y, point.w, point.h, { fillStyle: isMonochrome ? "#000000" : cell.c });
+                        fillRect(point.x, point.y, point.w, point.h, { fillStyle: isSingleColor ? THEME.fill : cell.c });
                         break;
                     case 2:
-                        strokeNoPaint(point.x, point.y, point.w, point.h, { strokeStyle: isMonochrome ? "#000000" : cell.c });
+                        strokeNoPaint(point.x, point.y, point.w, point.h, { strokeStyle: isSingleColor ? THEME.mark : cell.c });
                         break;
                     default:
                         break;
@@ -161,7 +177,7 @@ const LogicPuzzleFrame = ({
                 topSpaceHeight + cellSize * i,
                 leftSpaceWidth + cellsWidth,
                 topSpaceHeight + cellSize * i,
-                { lineWidth, lineDash }
+                { lineWidth, lineDash, strokeStyle: THEME.grid }
             );
         }
         for (let i = 0; i < horizontalCount + 1; i++) {
@@ -175,7 +191,7 @@ const LogicPuzzleFrame = ({
                 topSpaceHeight,
                 leftSpaceWidth + cellSize * i,
                 topSpaceHeight + cellsHeight,
-                { lineWidth, lineDash }
+                { lineWidth, lineDash, strokeStyle: THEME.grid }
             );
         }
     };
@@ -187,7 +203,7 @@ const LogicPuzzleFrame = ({
         lPCells,
         lPHints,
         cellIsShow,
-        isMonochrome,
+        isSingleColor,
         canvasWidth,
         canvasHeight,
         verticalCount,
@@ -225,7 +241,6 @@ const LogicPuzzleFrame = ({
             height={canvasHeight}
             onClick={onClickCanvas}
             ref={canvasRef}
-            style={{ border: '1px solid #ccc' }} // Optional: add border to see canvas
         />
     );
 };

@@ -8,14 +8,14 @@ import algoPatterns from '../algorithm/patterns';
 const LogicPuzzleAnalyzer = () => {
     const [verticalCount, setVerticalCount] = useState(5);
     const [horizontalCount, setHorizontalCount] = useState(5);
-    const [canvasWidth] = useState(500);
-    const [canvasHeight] = useState(500);
+    const [canvasWidth, setCanvasWidth] = useState(500);
+    const [canvasHeight, setCanvasHeight] = useState(500);
     const [lPHints, setLPHints] = useState(null);
     const [lPCells, setLPCells] = useState(null);
     const [cellIsShow] = useState(true);
     const [hintsJson, setHintsJson] = useState("");
     const [status, setStatus] = useState("Ready");
-    const [isMonochrome, setIsMonochrome] = useState(false);
+    const [isSingleColor, setIsSingleColor] = useState(false);
 
     // Initial setup
     useEffect(() => {
@@ -43,6 +43,7 @@ const LogicPuzzleAnalyzer = () => {
     };
 
     // Watch hintsJson
+    // Watch hintsJson
     useEffect(() => {
         if (!hintsJson) return;
         try {
@@ -57,6 +58,22 @@ const LogicPuzzleAnalyzer = () => {
             // Set Hints & Reset Cells directly
             setLPHints(parsedHints);
             setLPCells(LPCells.empty(vCount, hCount));
+
+            // Dynamic Canvas Size Calculation
+            const HINT_SIZE = 20;
+            const MARGIN = 10;
+            const TARGET_CELL_SIZE = 24;
+
+            // Note: Left hints correspond to horizontal rows (hCount), but logic usually depends on max hint length
+            // LogicPuzzleFrame assumes max hint length is roughly count/2.
+            const leftHintWidth = Math.ceil(hCount / 2) * HINT_SIZE;
+            const topHintHeight = Math.ceil(vCount / 2) * HINT_SIZE;
+
+            const w = MARGIN * 2 + leftHintWidth + (hCount * TARGET_CELL_SIZE);
+            const h = MARGIN * 2 + topHintHeight + (vCount * TARGET_CELL_SIZE);
+
+            setCanvasWidth(w);
+            setCanvasHeight(h);
 
         } catch (e) {
             console.error(e);
@@ -149,45 +166,23 @@ const LogicPuzzleAnalyzer = () => {
     };
 
     return (
-        <div>
-            <dl>
-                <dt>Import hints JSON:</dt>
-                <dd>
-                    <textarea
-                        value={hintsJson}
-                        onChange={(e) => setHintsJson(e.target.value)}
-                        rows="5"
-                        cols="50"
-                    />
-                </dd>
-            </dl>
-            {/* Manual Inputs need to trigger resetBoard */}
-            {/* Note: Generator has inputs, Analyzer usually reads from JSON but can share frame props */}
-            {/* Analyzer doesn't expose manual size inputs in the original code snippet above, 
-                 but LogicPuzzleGenerator did. Analyzing LogicPuzzleAnalyzer again...
-                 Ah, Analyzer DOES NOT seem to have size inputs in the render block I saw previously? 
-                 Let's check the Render block carefully. 
-                 Wait, I previously saw LogicPuzzleGenerator code in step 442, but read LogicPuzzleAnalyzer in step 492.
-                 LogicPuzzleAnalyzer Render (lines 161-191) ONLY has JSON textarea.
-                 It does NOT have vertical/horizontal count inputs visible to user.
-                 So `handleVerticalChange` is not needed for UI.
-                 The state `verticalCount` and `horizontalCount` are internal or driven by JSON.
-                 Initial useEffect sets them to 5,5.
-                 Wait, if I remove the effect, initial load (empty) might result in null lPCells?
-                 The `useEffect([], ...)` sets initial. That is fine.
-                 So removing the `[verticalCount, horizontalCount]` effect is SAFE because user cannot manually change valid in Analyzer UI.
-              */}
-            <p>
-                <button onClick={onClickAnalyze}>解析</button>
-                <span style={{ marginLeft: '10px', fontWeight: 'bold' }}>{status}</span>
-                <label style={{ marginLeft: '15px' }}>
-                    <input type="checkbox" checked={isMonochrome} onChange={(e) => setIsMonochrome(e.target.checked)} />
-                    モノクロ表示
+        <div className="analyzer-container">
+            <div className="control-panel">
+                <textarea
+                    value={hintsJson}
+                    onChange={(e) => setHintsJson(e.target.value)}
+                    rows="3"
+                    placeholder="Hints JSON here..."
+                />
+                <button className="primary" onClick={onClickAnalyze}>解析</button>
+                <div className="status-badge">{status}</div>
+                <label className="toggle-label">
+                    <input type="checkbox" checked={isSingleColor} onChange={(e) => setIsSingleColor(e.target.checked)} />
+                    単色表示
                 </label>
-            </p>
-            <p>
-                <button onClick={onClickClear}>クリア</button>
-            </p>
+                <button className="secondary" onClick={onClickClear}>クリア</button>
+            </div>
+
             <LogicPuzzleFrame
                 canvasWidth={canvasWidth}
                 canvasHeight={canvasHeight}
@@ -196,7 +191,7 @@ const LogicPuzzleAnalyzer = () => {
                 lPHints={lPHints}
                 lPCells={lPCells}
                 cellIsShow={cellIsShow}
-                isMonochrome={isMonochrome}
+                isSingleColor={isSingleColor}
                 onClickCell={onClickCell}
             />
         </div>
